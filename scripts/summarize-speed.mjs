@@ -1,0 +1,1 @@
+import fs from'node:fs';const a=JSON.parse(fs.readFileSync('validation/speed-baseline.json')),b=JSON.parse(fs.readFileSync('validation/speed-optimized.json'));console.log({before:a.median,after:b.median,reduction:(1-b.median/a.median)*100,factor:a.median/b.median,identical:new Set([...a.results,...b.results].map(r=>r.digest)).size===1});

@@ -1,0 +1,38 @@
+{
+  "name": "eext-track-equal-length",
+  "type": "module",
+  "version": "1.9.1",
+  "description": "支持动态振幅的单边/双边蛇形、大折返和混合等长，含自动推挤、预览及写入恢复。",
+  "author": "JLCEDA <support@lceda.cn>",
+  "license": "Apache-2.0",
+  "homepage": "https://pro.lceda.cn/",
+  "engines": {
+    "node": ">=20.17.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "compile": "node scripts/build.mjs --compile-only",
+    "typecheck": "tsc --noEmit --incremental false",
+    "test": "node --test tests/*.test.mjs",
+    "check:api": "node scripts/lint-eda-api.cjs src/",
+    "check:package": "node scripts/check-package.mjs",
+    "test:live": "node tests/live.mjs"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^5.4.1",
+    "@jlceda/pro-api-types": "^0.4.26",
+    "@types/fs-extra": "^11.0.4",
+    "@types/ws": "^8.5.13",
+    "esbuild": "^0.24.2",
+    "eslint": "^9.37.0",
+    "fs-extra": "^11.3.0",
+    "ignore": "^7.0.3",
+    "jszip": "^3.10.1",
+    "lint-staged": "^16.2.3",
+    "rimraf": "^6.0.1",
+    "simple-git-hooks": "^2.13.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3",
+    "ws": "^8.18.0"
+  }
+}

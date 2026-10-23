@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>一键等长</title><style>:root {
+ font-family:"Microsoft YaHei",system-ui,sans-serif;font-size:12px;color-scheme:light;
+ --bg:#f5f7fa;--text:#223047;--muted:#617087;--surface:#fff;--border:#cbd3df;
+ --table-border:#dce2eb;--table-head:#edf1f7;--row-border:#e9edf4;
+ --hover:#edf4ff;--accent:#246fc9;--accent-hover:#1b64bd;--primary-text:#fff;
+ --status-bg:#e8f0fc;--status-text:#265b96;--error-bg:#fceaea;--error-text:#ad3535;
+ --preview-bg:#e9eff6;--preview-text:#57697e;
+ --trace-0:#0f766e;--trace-1:#936000;--trace-2:#315dc4;--trace-3:#ad326f;--pushed:#a13d31;
+ color:var(--text);background:var(--bg);accent-color:var(--accent);
+}
+:root[data-theme="dark"] {
+ color-scheme:dark;
+ --bg:#1e2430;--text:#e2e8f2;--muted:#a6b4c8;--surface:#293240;--border:#526076;
+ --table-border:#48566c;--table-head:#303c4e;--row-border:#3d495c;
+ --hover:#344760;--accent:#80b5ff;--accent-hover:#a3caff;--primary-text:#14243c;
+ --status-bg:#263d58;--status-text:#bdd9ff;--error-bg:#502f36;--error-text:#ffc1c6;
+ --preview-bg:#101927;--preview-text:#a2b3ca;
+ --trace-0:#4fd8c6;--trace-1:#ffca6a;--trace-2:#8ab7ff;--trace-3:#f190c3;--pushed:#ffab9d;
+}
+@media (prefers-color-scheme:dark) {
+ :root:not([data-theme]) {
+  color-scheme:dark;
+  --bg:#1e2430;--text:#e2e8f2;--muted:#a6b4c8;--surface:#293240;--border:#526076;
+  --table-border:#48566c;--table-head:#303c4e;--row-border:#3d495c;
+  --hover:#344760;--accent:#80b5ff;--accent-hover:#a3caff;--primary-text:#14243c;
+  --status-bg:#263d58;--status-text:#bdd9ff;--error-bg:#502f36;--error-text:#ffc1c6;
+  --preview-bg:#101927;--preview-text:#a2b3ca;
+  --trace-0:#4fd8c6;--trace-1:#ffca6a;--trace-2:#8ab7ff;--trace-3:#f190c3;--pushed:#ffab9d;
+ }
+}
+*{box-sizing:border-box}
+body{margin:0;padding:10px 12px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+header strong{font-size:16px}
+#count,.muted{color:var(--muted);font-size:11px}
+.row{display:flex;align-items:center;gap:6px;margin-bottom:7px}
+.row>select{min-width:0;flex:1}
+button,select,input{font:inherit;border:1px solid var(--border);border-radius:5px;min-height:28px;background:var(--surface);color:inherit}
+button{padding:4px 8px;white-space:nowrap;cursor:pointer}
+button:hover:enabled{border-color:var(--accent);background:var(--hover)}
+button:disabled,input:disabled,select:disabled{opacity:.5;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input{padding:3px 6px;min-width:0;width:100%}
+select{padding:3px}
+#scope{flex:1.2}#layer{flex:.8}
+.target #targetMode{flex:1.7}.target input{width:90px}.target #unit{flex:.65}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0}
+.grid label{color:var(--muted);font-size:11px}
+.grid input{margin-top:4px;color:var(--text);font-size:12px}
+.table-wrap{max-height:90px;min-height:66px;overflow:auto;border:1px solid var(--table-border);border-radius:5px;background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+th{position:sticky;top:0;background:var(--table-head);color:var(--muted)}
+th,td{padding:6px 7px;text-align:right;border-bottom:1px solid var(--row-border)}
+th:first-child,td:first-child{text-align:left;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td.empty{text-align:center;color:var(--muted);height:45px}
+svg{display:block;width:100%;height:64px;background:var(--preview-bg);border-radius:5px;margin:8px 0}
+svg text{fill:var(--preview-text);font-size:10px}
+svg line,svg path{vector-effect:non-scaling-stroke;stroke-width:1.6;stroke-linecap:round}
+.actions{display:flex;gap:8px}.actions button{flex:1;min-height:32px}
+.primary{background:var(--accent);color:var(--primary-text);border-color:var(--accent)}
+.primary:hover:enabled{background:var(--accent-hover);color:var(--primary-text)}
+#hint{font-size:10px;line-height:1.6;color:var(--muted);margin:7px 0}
+#status{min-height:36px;font-size:11px;line-height:1.5;padding:7px 8px;border-radius:5px;background:var(--status-bg);color:var(--status-text);overflow-wrap:anywhere}
+#status.error{background:var(--error-bg);color:var(--error-text)}
+.differential-row{font-size:11px;margin-bottom:6px}
+.differential-row label{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.differential-row input{width:14px;min-height:14px;margin:0}
+.differential-row span{color:var(--muted);font-size:10px}
+</style></head>
+<body>
+<header><strong>一键等长</strong><div style="display:flex;align-items:center;gap:8px"><span id="count">未读取</span><button id="clear" title="清空累计目标和画布选中集">清空</button></div></header>
+<div class="row"><select id="scope" aria-label="等长范围"><option value="route">完整走线</option><option value="segment">选中线段</option></select><select id="layer" aria-label="铜层"><option value="auto" selected>自动识别</option><option value="1">顶层</option><option value="2">底层</option></select><button id="pick">两点取区</button><button id="read">读取选中</button></div>
+<div class="row"><select id="groupKind" aria-label="分组类型" style="flex:.9"><option value="equalLength">等长网络组</option><option value="netClass">网络类</option></select><select id="targetGroup" aria-label="已有分组" style="flex:1.5" title="读取后加入累计目标"><option value="">选择已有等长组</option></select><button id="refreshGroups" title="刷新当前 PCB 的等长网络组和网络类">刷新</button><button id="readGroup" title="读取所选分组中的走线，加入累计目标">读取</button></div>
+<div class="row target"><label for="targetMode">目标</label><select id="targetMode"><option value="longest">自动匹配最长</option><option value="manual">指定长度</option></select><input id="target" aria-label="目标长度" type="number" min="0" step="any" value="1000" disabled><select id="unit" aria-label="单位"><option value="mil">mil</option><option value="mm">mm</option></select></div>
+<div class="grid">
+<label title="相邻折返臂的中心线间距；圆角蛇形保持此设定值">间距 W<input id="pitch" type="number" min="0" step="any" value="20"></label>
+<label title="原走线中心线到峰顶的最小距离；双边峰谷总高度至少为 2H">最小振幅 H<input id="minAmplitude" type="number" min="0" step="any" value="10"></label>
+<label>最大振幅<input id="amplitude" type="number" min="0" step="any" value="100"></label>
+<label>避让净距<input id="clearance" type="number" min="0" step="any" value="6"></label>
+<label>长度容差<input id="tolerance" type="number" min="0" step="any" value="0.1"></label>
+<label>波数<input id="lobes" aria-label="波数" title="连续蛇形的波数，0为自动；大折返不使用此参数" type="number" min="0" max="48" step="1" value="4"></label>
+</div>
+<div class="row"><label for="pattern">等长方式</label><select id="pattern"><option value="single" selected>单边蛇形</option><option value="double">双边蛇形</option><option value="large">大折返</option><option value="mixed">混合模式（自动组合）</option></select><label style="display:flex;align-items:center;gap:3px;white-space:nowrap" title="每个折返独立分配振幅；严格遵守最小/最大振幅"><input id="dynamicAmplitude" aria-label="动态振幅" type="checkbox" checked style="width:14px;min-height:14px">动态振幅</label></div>
+<div class="row"><label for="side">方向</label><select id="side" aria-label="补长方向"><option value="auto">自动寻找两侧</option><option value="left">起点→终点左侧</option><option value="right">起点→终点右侧</option></select><select id="mode" aria-label="避让模式"><option value="push" selected>自动推挤</option><option value="direct">仅空位补长</option></select></div>
+<div class="row differential-row"><label title="选择两个网络，需有同层平行区段；支持沿过孔跨层的完整路径"><input id="differential" aria-label="差分模式" type="checkbox">差分模式</label><span>两条线为一对 · 优先蛇形、共同折返</span></div>
+<div class="table-wrap"><table><thead><tr><th>目标网络</th><th>原长</th><th>补长后</th><th>增量</th></tr></thead><tbody id="rows"><tr><td colspan="4" class="empty">读取后显示各目标长度</td></tr></tbody></table></div>
+<svg id="preview" viewBox="0 0 370 96" aria-label="补长几何预览"><text x="185" y="52" text-anchor="middle">预览方案后显示路径（示意，不含周围障碍）</text></svg>
+<div class="actions"><button id="previewButton" disabled>预览等长方案</button><button id="apply" class="primary" disabled>应用等长</button></div>
+<p id="hint">完整走线沿过孔跨层计长；读取可累积，清空后重新开始。</p>
+<div id="status" role="status" aria-live="polite">正在连接控制器…</div>
+<script>window.addEventListener('error',function(e){document.getElementById('status').textContent='面板启动失败：'+e.message;});window.addEventListener('unhandledrejection',function(e){document.getElementById('status').textContent='面板操作失败：'+String(e.reason);});
+"use strict";
+(() => {
+  // src/copper.ts
+  var TAU = 2 * Math.PI;
+  var EPS = 1e-8;
+  var distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  var mod = (a) => (a % TAU + TAU) % TAU;
+  var cache = /* @__PURE__ */ new WeakMap();
+  function arcGeometry(l) {
+    let g = cache.get(l);
+    if (!g) {
+      const sweep = (l.arcAngle ?? 0) * Math.PI / 180, dx = l.end.x - l.start.x, dy = l.end.y - l.start.y;
+      if (!sweep || Math.abs(sweep) >= TAU - EPS || Math.hypot(dx, dy) < EPS) throw new Error("无效圆弧参数");
+      const k = 1 / (2 * Math.tan(sweep / 2));
+      const center = { x: (l.start.x + l.end.x) / 2 - dy * k, y: (l.start.y + l.end.y) / 2 + dx * k };
+      g = { center, radius: distance(center, l.start), start: Math.atan2(l.start.y - center.y, l.start.x - center.x), sweep };
+      cache.set(l, g);
+    }
+    return g;
+  }
+  var angleOn = (angle, g) => mod(Math.sign(g.sweep) * (angle - g.start)) <= Math.abs(g.sweep) + EPS || mod(Math.sign(g.sweep) * (g.start - angle)) < EPS;
+  var polar = (g, a) => ({ x: g.center.x + g.radius * Math.cos(a), y: g.center.y + g.radius * Math.sin(a) });
+  var boxCache = /* @__PURE__ */ new WeakMap();
+  function copperBounds(l) {
+    let box = boxCache.get(l);
+    if (!box) {
+      box = { minX: Math.min(l.start.x, l.end.x), maxX: Math.max(l.start.x, l.end.x), minY: Math.min(l.start.y, l.end.y), maxY: Math.max(l.start.y, l.end.y) };
+      if (l.arcAngle) {
+        const g = arcGeometry(l);
+        for (let i = 0; i < 4; i++) {
+          const a = i * Math.PI / 2;
+          if (!angleOn(a, g)) continue;
+          const p = polar(g, a);
+          box.minX = Math.min(box.minX, p.x);
+          box.maxX = Math.max(box.maxX, p.x);
+          box.minY = Math.min(box.minY, p.y);
+          box.maxY = Math.max(box.maxY, p.y);
+        }
+      }
+      boxCache.set(l, box);
+    }
+    return box;
+  }
+
+  // src/panel.ts
+  var COMMAND = "track-length-command-v1";
+  var STATE = "track-length-state-v1";
+  var byId = (id) => document.getElementById(id);
+  var input = (id) => byId(id);
+  var select = (id) => byId(id);
+  var fields = ["amplitude", "minAmplitude", "pitch", "clearance", "tolerance", "target"];
+  var busy = false;
+  var picking = false;
+  var valid = false;
+  var ready = false;
+  var polling = false;
+  var pending = "";
+  var serial = 0;
+  var layerList = "";
+  var lastRevision = 0;
+  var savedGroups = { equalLength: [], netClass: [] };
+  var groupChoice = {};
+  function renderGroups() {
+    const kind = select("groupKind").value, groups = savedGroups[kind], label = kind === "netClass" ? "网络类" : "等长组";
+    select("targetGroup").replaceChildren(new Option(groups.length ? `选择已有${label}` : `暂无${label}`, ""), ...groups.map((g) => new Option(`${g.name}（${g.nets.length}网）`, g.name)));
+    if (groups.some((g) => g.name === groupChoice[kind])) select("targetGroup").value = groupChoice[kind];
+    select("targetGroup").title = groups.find((g) => g.name === select("targetGroup").value)?.nets.join("、") ?? "读取后加入累计目标";
+  }
+  var previousFactor = 1;
+  var dirty = false;
+  var rawRows = [];
+  var styleNames = { single: "单边", double: "双边", large: "大折返" };
+  var themePolling = false;
+  async function syncTheme() {
+    if (themePolling) return;
+    themePolling = true;
+    try {
+      const theme = await eda.sys_Window?.getCurrentTheme?.();
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {
+    } finally {
+      themePolling = false;
+    }
+  }
+  void syncTheme();
+  setInterval(() => {
+    if (!document.hidden) void syncTheme();
+  }, 1e3);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) void syncTheme();
+  });
+  document.body.dataset.started = "true";
+  var factor = () => select("unit").value === "mm" ? 1 / 0.0254 : 1;
+  function status(text, error = false) {
+    byId("status").textContent = text;
+    byId("status").classList.toggle("error", error);
+  }
+  function controls() {
+    var _a, _b, _c;
+    for (const id of [...fields, "unit", "scope", "layer", "targetMode", "side", "mode", "pattern", "lobes", "dynamicAmplitude", "differential"]) byId(id).disabled = busy || picking;
+    (_a = input("target")).disabled || (_a.disabled = select("targetMode").value !== "manual");
+    (_b = input("lobes")).disabled || (_b.disabled = ["large", "mixed"].includes(select("pattern").value));
+    (_c = input("minAmplitude")).disabled || (_c.disabled = select("pattern").value === "large");
+    select("side").title = select("pattern").value === "double" ? "双边交替展开，此处决定首波方向" : "沿原线段起点到终点定义左右侧";
+    byId("read").disabled = busy || picking;
+    byId("clear").disabled = busy || picking;
+    select("targetGroup").disabled = busy || picking;
+    select("groupKind").disabled = busy || picking;
+    byId("refreshGroups").disabled = busy || picking;
+    byId("readGroup").disabled = busy || picking || !select("targetGroup").value;
+    byId("pick").disabled = busy;
+    byId("pick").textContent = picking ? "取消取区" : "两点取区";
+    byId("previewButton").disabled = busy || picking || !valid;
+    byId("apply").disabled = busy || picking || !ready;
+    byId("hint").textContent = select("pattern").value === "large" ? "大折返优先少量宽幅绕线 · 最小振幅 H 不适用。" : `W 为折返臂中心距，H 为单侧最小振幅 · ${select("pattern").value === "double" ? "双边峰谷直接相连" : "单边连续"} · 波数0为自动。`;
+    if (select("pattern").value === "mixed") byId("hint").textContent = "自动组合三种形式 · 波数自动 · H约束圆角；悬停网络名查看样式。";
+    if (input("differential").checked) byId("hint").textContent = "两条线为一对，可跨过孔；在同层平行段补长。优先补偿小长度差，必要时共同蛇形/折返。";
+  }
+  function options() {
+    return { differential: input("differential").checked, dynamicAmplitude: input("dynamicAmplitude").checked, target: select("targetMode").value === "longest" ? "longest" : input("target").valueAsNumber * factor(), amplitude: input("amplitude").valueAsNumber * factor(), minAmplitude: select("pattern").value === "large" ? 0 : input("minAmplitude").valueAsNumber * factor(), pitch: input("pitch").valueAsNumber * factor(), clearance: input("clearance").valueAsNumber * factor(), tolerance: input("tolerance").valueAsNumber * factor(), side: select("side").value, mode: select("mode").value, pattern: select("pattern").value, lobes: ["large", "mixed"].includes(select("pattern").value) ? 0 : input("lobes").valueAsNumber };
+  }
+  async function send(action) {
+    if (busy) return;
+    const config = options();
+    if (["preview", "apply"].includes(action) && (!Number.isFinite(config.minAmplitude) || config.minAmplitude < 0 || config.minAmplitude > config.amplitude)) {
+      status("最小振幅 H 须大于等于 0，且不得超过最大振幅", true);
+      return;
+    }
+    if (["preview", "apply"].includes(action) && config.pattern !== "large" && (!Number.isInteger(config.lobes) || config.lobes < 0 || config.lobes > 48)) {
+      status("波数须为0至48的整数，0表示自动", true);
+      return;
+    }
+    if (["preview", "apply"].includes(action) && config.pattern === "double" && config.lobes === 1) {
+      status("双边蛇形至少需要2波（每侧至少1波）；也可设0自动", true);
+      return;
+    }
+    if (["preview", "apply"].includes(action) && (![config.amplitude, config.pitch, config.tolerance].every((n) => Number.isFinite(n) && n > 0) || !Number.isFinite(config.clearance) || config.clearance < 0 || config.target !== "longest" && (!Number.isFinite(config.target) || Number(config.target) <= 0))) {
+      status("请输入有效长度，幅度/间距/容差须大于 0，净距不得为负", true);
+      return;
+    }
+    try {
+      if (["preview", "read", "readGroup"].includes(action)) dirty = false;
+      busy = true;
+      controls();
+      pending = `${Date.now()}-${serial++}`;
+      status(action === "pick" ? "请依次单击画布矩形的两角" : "正在处理…");
+      if (!await eda.sys_Storage.setExtensionUserConfig(COMMAND, { id: pending, action, groupKind: select("groupKind").value, targetGroup: select("targetGroup").value, scope: select("scope").value, layer: select("layer").value === "auto" ? "auto" : Number(select("layer").value), options: config })) throw new Error("无法发送命令");
+    } catch (error) {
+      console.error("[TrackEqualLength]", "Send failed", error);
+      pending = "";
+      busy = false;
+      status(String(error), true);
+      controls();
+    }
+  }
+  function renderRows() {
+    const tbody = byId("rows");
+    tbody.replaceChildren();
+    if (!rawRows.length) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 4;
+      td.className = "empty";
+      td.textContent = "读取后显示各目标长度";
+      tr.append(td);
+      tbody.append(tr);
+    }
+    for (let i = 0; i < rawRows.length; i++) {
+      const row = rawRows[i];
+      const tr = document.createElement("tr");
+      if (row.styles?.length) tr.title = `采用样式：${row.styles.map((s) => styleNames[s] || s).join(" + ")}`;
+      for (const text of [`${i + 1}. ${row.net}`, ...[row.before, row.after, row.added].map((n) => (n / factor()).toFixed(select("unit").value === "mm" ? 4 : 3))]) {
+        const td = document.createElement("td");
+        td.textContent = text;
+        td.title = tr.title ? `${text} — ${tr.title}` : text;
+        tr.append(td);
+      }
+      tbody.append(tr);
+    }
+  }
+  function renderPreview(targets, pushed = []) {
+    const groups = [...targets, ...pushed];
+    const svg = byId("preview");
+    svg.replaceChildren();
+    const points = groups.flat().flatMap((l) => {
+      const box = copperBounds({ id: "", net: "", layer: 1, width: 0, locked: false, start: { x: l[0], y: l[1] }, end: { x: l[2], y: l[3] }, arcAngle: l[4] });
+      return [[box.minX, box.minY], [box.maxX, box.maxY]];
+    });
+    if (!points.length) {
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute("x", "185");
+      text.setAttribute("y", "52");
+      text.setAttribute("text-anchor", "middle");
+      text.textContent = "预览方案后显示路径（示意，不含周围障碍）";
+      svg.append(text);
+      return;
+    }
+    const xs = points.map((p) => p[0]), ys = points.map((p) => p[1]);
+    const minX = Math.min(...xs), maxY = Math.max(...ys);
+    const scale = Math.min(346 / (Math.max(...xs) - minX || 1), 76 / (maxY - Math.min(...ys) || 1));
+    groups.forEach((group, i) => group.forEach((l) => {
+      const line = document.createElementNS("http://www.w3.org/2000/svg", l[4] ? "path" : "line");
+      const x1 = 12 + (l[0] - minX) * scale, y1 = 10 + (maxY - l[1]) * scale, x2 = 12 + (l[2] - minX) * scale, y2 = 10 + (maxY - l[3]) * scale;
+      if (l[4]) {
+        const r = Math.hypot(l[2] - l[0], l[3] - l[1]) * scale / (2 * Math.sin(Math.abs(l[4]) * Math.PI / 360));
+        line.setAttribute("d", `M${x1},${y1} A${r},${r} 0 ${Math.abs(l[4]) > 180 ? 1 : 0},${l[4] > 0 ? 0 : 1} ${x2},${y2}`);
+        line.setAttribute("fill", "none");
+      } else for (const [k, value] of Object.entries({ x1, y1, x2, y2 })) line.setAttribute(k, String(value));
+      line.setAttribute("stroke", i >= targets.length ? "var(--pushed)" : `var(--trace-${i % 4})`);
+      if (i >= targets.length) line.setAttribute("stroke-dasharray", "3 2");
+      svg.append(line);
+    }));
+  }
+  async function poll() {
+    if (polling) return;
+    polling = true;
+    try {
+      const state = await eda.sys_Storage.getExtensionUserConfig(STATE);
+      if (!state || pending && state.ack !== pending || state.revision === lastRevision) return;
+      lastRevision = state.revision;
+      pending = "";
+      busy = !!state.busy;
+      picking = !!state.picking;
+      valid = !!state.valid;
+      ready = !!state.previewReady && !dirty;
+      byId("count").textContent = `${Number(state.count) || 0} 个目标 · ${select("unit").value}`;
+      status(state.message || "请选择走线", !!state.error);
+      const nextGroups = { equalLength: state.equalLengthGroups ?? [], netClass: state.netClasses ?? [] };
+      if (JSON.stringify(nextGroups) !== JSON.stringify(savedGroups)) {
+        savedGroups = nextGroups;
+        renderGroups();
+      }
+      if (Array.isArray(state.layers) && JSON.stringify(state.layers) !== layerList) {
+        layerList = JSON.stringify(state.layers);
+        const old = select("layer").value;
+        select("layer").replaceChildren(new Option("自动识别", "auto"), ...state.layers.map((l) => new Option(l.name, String(l.id))));
+        if (old === "auto" || state.layers.some((l) => String(l.id) === old)) select("layer").value = old;
+      }
+      const detected = state.valid ? state.layers?.filter((l) => (state.resolvedLayers ?? [state.resolvedLayer]).includes(l.id)) : [];
+      select("layer").options[0].text = detected?.length > 1 ? `自动 · ${detected.length}层` : detected?.length ? `自动 · ${detected[0].name}` : "自动识别";
+      select("layer").title = detected?.length && select("layer").value === "auto" ? `自动识别铜层：${detected.map((l) => l.name).join(" / ")}` : "按走线自动识别，可同时处理不同铜层；完整路径沿过孔连接";
+      rawRows = state.rows || [];
+      renderRows();
+      renderPreview(state.preview || [], state.pushedPreview || []);
+      controls();
+    } catch (error) {
+      console.error("[TrackEqualLength]", "Poll failed", error);
+      status(`控制器读取失败：${String(error)}`, true);
+    } finally {
+      polling = false;
+    }
+  }
+  byId("read").onclick = () => void send("read");
+  byId("refreshGroups").onclick = () => void send("refreshGroups");
+  byId("readGroup").onclick = () => void send("readGroup");
+  select("targetGroup").onchange = () => {
+    groupChoice[select("groupKind").value] = select("targetGroup").value;
+    renderGroups();
+    controls();
+  };
+  select("groupKind").onchange = () => {
+    renderGroups();
+    controls();
+  };
+  byId("clear").onclick = () => {
+    valid = false;
+    ready = false;
+    void send("clear");
+  };
+  byId("pick").onclick = () => void send(picking ? "cancel" : "pick");
+  byId("previewButton").onclick = () => void send("preview");
+  byId("apply").onclick = () => void send("apply");
+  for (const id of ["scope", "layer"]) byId(id).onchange = () => {
+    valid = false;
+    ready = false;
+    controls();
+    void send("selection");
+  };
+  function markDirty() {
+    dirty = true;
+    ready = false;
+    controls();
+    status("参数已改变，请重新预览");
+  }
+  for (const id of [...fields, "lobes"]) byId(id).oninput = markDirty;
+  for (const id of ["targetMode", "side", "mode", "pattern", "dynamicAmplitude", "differential"]) byId(id).onchange = markDirty;
+  select("unit").onchange = () => {
+    for (const id of fields) if (Number.isFinite(input(id).valueAsNumber)) input(id).value = String(Number((input(id).valueAsNumber * previousFactor / factor()).toFixed(8)));
+    previousFactor = factor();
+    renderRows();
+    byId("count").textContent = `${rawRows.length} 个目标 · ${select("unit").value}`;
+    markDirty();
+  };
+  controls();
+  void poll();
+  setInterval(() => {
+    void poll();
+  }, 200);
+})();
+</script></body></html>

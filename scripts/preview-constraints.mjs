@@ -1,0 +1,21 @@
+import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
+import { build } from 'esbuild';
+const require=createRequire(import.meta.url);
+const {chromium}=require(process.env.PLAYWRIGHT_PATH||'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const bundle=await build({stdin:{contents:`export * from './src/length-planner';export {buildRoutes} from './src/routes';export {waveMetrics} from './src/serpentine';`,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'esm'});
+const m=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const line={id:'A',net:'A',layer:1,width:8,locked:false,start:{x:0,y:0},end:{x:300,y:0}};
+const options={target:350,amplitude:100,minAmplitude:10,pitch:20,clearance:6,tolerance:.01,side:'left',pattern:'double',lobes:2};
+const plan=m.planLengths([line],m.selectTargets(m.buildRoutes([line],[]),[line],1,'segment',['A']),options);
+const metrics=m.waveMetrics(50,options,8,2),s=(300-metrics.occupied)/2,r=metrics.radius,A=metrics.amplitude;
+const x=p=>392+(p-150)*5,y=p=>120-p*5;
+const path=[plan.groups[0][0].start,...plan.groups[0].map(l=>l.end)].map(p=>`${x(p.x)},${y(p.y)}`).join(' ');
+const left=x(s+r),right=x(s+r+20),baseline=y(0),crest=y(A);
+const html=`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>双边蛇形约束</title><style>*{box-sizing:border-box}body{margin:0;padding:28px;background:#131d2b;color:#e8edf6;font:14px 'Microsoft YaHei',sans-serif}h1{margin:0 0 10px;font-size:22px}p{color:#a4b5cb;margin:0 0 16px;font-size:13px}svg{display:block;width:784px;height:240px;background:#192636;border-radius:8px}text{fill:#d6e0ef;font:13px 'Microsoft YaHei',sans-serif}.guide{stroke:#8090a7;stroke-width:1;fill:none}.dim{stroke:#e4c682;stroke-width:1;fill:none;marker-start:url(#arrow);marker-end:url(#arrow)}footer{margin-top:16px;color:#a4b5cb;font-size:12px}</style><h1>双边蛇形：峰、谷直接相连</h1><p>间距 W = 20mil · 最小振幅 H = 10mil · 最大振幅 100mil · 2波</p><svg viewBox="0 0 784 240"><defs><marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10" fill="#e4c682"/></marker></defs><line x1="20" x2="764" y1="${baseline}" y2="${baseline}" stroke="#60738f" stroke-dasharray="4 5"/><polyline points="${path}" fill="none" stroke="#ffc9c3" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path class="guide" d="M${left},${crest} V224 M${right},${baseline+20} V224"/><path class="dim" d="M${left},216 H${right}"/><text x="${(left+right)/2}" y="207" text-anchor="middle">W = 20mil</text><path class="guide" d="M${left+35},${crest} H${right+215} M${right+80},${baseline} H${right+215}"/><path class="dim" d="M${right+205},${crest} V${baseline}"/><text x="${right+195}" y="${(crest+baseline)/2-9}" text-anchor="end">A = ${A.toFixed(3)}mil</text><text x="${right+195}" y="${(crest+baseline)/2+12}" text-anchor="end">A ≥ H</text></svg><footer>按实际生成的中心线局部几何绘制：300mil 补至 ${plan.rows[0].after.toFixed(3)}mil；实际振幅由目标长度反算，并满足 H 下限。</footer></html>`;
+await fs.writeFile('validation/double-constraints.html',html);
+await fs.writeFile('validation/double-constraints.json',JSON.stringify({options,metrics,rows:plan.rows,geometry:plan.groups[0]},null,2));
+const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+try{const page=await browser.newPage({viewport:{width:840,height:400},deviceScaleFactor:2});await page.goto(pathToFileURL(`${process.cwd()}/validation/double-constraints.html`).href);await page.screenshot({path:'validation/double-constraints.png',fullPage:true});}finally{await browser.close();}
+console.info('Generated waveform and dimensions: validation/double-constraints.png');

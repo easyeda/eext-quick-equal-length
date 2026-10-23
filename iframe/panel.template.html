@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>一键等长</title><link rel="stylesheet" href="/iframe/style.css"></head>
+<body>
+<header><strong>一键等长</strong><div style="display:flex;align-items:center;gap:8px"><span id="count">未读取</span><button id="clear" title="清空累计目标和画布选中集">清空</button></div></header>
+<div class="row"><select id="scope" aria-label="等长范围"><option value="route">完整走线</option><option value="segment">选中线段</option></select><select id="layer" aria-label="铜层"><option value="auto" selected>自动识别</option><option value="1">顶层</option><option value="2">底层</option></select><button id="pick">两点取区</button><button id="read">读取选中</button></div>
+<div class="row"><select id="groupKind" aria-label="分组类型" style="flex:.9"><option value="equalLength">等长网络组</option><option value="netClass">网络类</option></select><select id="targetGroup" aria-label="已有分组" style="flex:1.5" title="读取后加入累计目标"><option value="">选择已有等长组</option></select><button id="refreshGroups" title="刷新当前 PCB 的等长网络组和网络类">刷新</button><button id="readGroup" title="读取所选分组中的走线，加入累计目标">读取</button></div>
+<div class="row target"><label for="targetMode">目标</label><select id="targetMode"><option value="longest">自动匹配最长</option><option value="manual">指定长度</option></select><input id="target" aria-label="目标长度" type="number" min="0" step="any" value="1000" disabled><select id="unit" aria-label="单位"><option value="mil">mil</option><option value="mm">mm</option></select></div>
+<div class="grid">
+<label title="相邻折返臂的中心线间距；圆角蛇形保持此设定值">间距 W<input id="pitch" type="number" min="0" step="any" value="20"></label>
+<label title="原走线中心线到峰顶的最小距离；双边峰谷总高度至少为 2H">最小振幅 H<input id="minAmplitude" type="number" min="0" step="any" value="10"></label>
+<label>最大振幅<input id="amplitude" type="number" min="0" step="any" value="100"></label>
+<label>避让净距<input id="clearance" type="number" min="0" step="any" value="6"></label>
+<label>长度容差<input id="tolerance" type="number" min="0" step="any" value="0.1"></label>
+<label>波数<input id="lobes" aria-label="波数" title="连续蛇形的波数，0为自动；大折返不使用此参数" type="number" min="0" max="48" step="1" value="4"></label>
+</div>
+<div class="row"><label for="pattern">等长方式</label><select id="pattern"><option value="single" selected>单边蛇形</option><option value="double">双边蛇形</option><option value="large">大折返</option><option value="mixed">混合模式（自动组合）</option></select><label style="display:flex;align-items:center;gap:3px;white-space:nowrap" title="每个折返独立分配振幅；严格遵守最小/最大振幅"><input id="dynamicAmplitude" aria-label="动态振幅" type="checkbox" checked style="width:14px;min-height:14px">动态振幅</label></div>
+<div class="row"><label for="side">方向</label><select id="side" aria-label="补长方向"><option value="auto">自动寻找两侧</option><option value="left">起点→终点左侧</option><option value="right">起点→终点右侧</option></select><select id="mode" aria-label="避让模式"><option value="push" selected>自动推挤</option><option value="direct">仅空位补长</option></select></div>
+<div class="row differential-row"><label title="选择两个网络，需有同层平行区段；支持沿过孔跨层的完整路径"><input id="differential" aria-label="差分模式" type="checkbox">差分模式</label><span>两条线为一对 · 优先蛇形、共同折返</span></div>
+<div class="table-wrap"><table><thead><tr><th>目标网络</th><th>原长</th><th>补长后</th><th>增量</th></tr></thead><tbody id="rows"><tr><td colspan="4" class="empty">读取后显示各目标长度</td></tr></tbody></table></div>
+<svg id="preview" viewBox="0 0 370 96" aria-label="补长几何预览"><text x="185" y="52" text-anchor="middle">预览方案后显示路径（示意，不含周围障碍）</text></svg>
+<div class="actions"><button id="previewButton" disabled>预览等长方案</button><button id="apply" class="primary" disabled>应用等长</button></div>
+<p id="hint">完整走线沿过孔跨层计长；读取可累积，清空后重新开始。</p>
+<div id="status" role="status" aria-live="polite">正在连接控制器…</div>
+<script src="/iframe/app.js"></script></body></html>

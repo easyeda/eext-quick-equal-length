@@ -1,0 +1,20 @@
+import fs from 'node:fs/promises';
+import {createRequire} from 'node:module';
+import {pathToFileURL} from 'node:url';
+import {build} from 'esbuild';
+import {mixedLines,mixedOptions} from '../tests/mixed-fixture.mjs';
+const require=createRequire(import.meta.url);
+const {chromium}=require(process.env.PLAYWRIGHT_PATH||'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const b=await build({stdin:{contents:`export * from './src/length-planner';export {buildRoutes} from './src/routes';`,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'esm'});
+const m=await import(`data:text/javascript;base64,${Buffer.from(b.outputFiles[0].text).toString('base64')}`);
+const p=m.planLengths(mixedLines,m.selectTargets(m.buildRoutes(mixedLines,[]),mixedLines,1,'segment',['A']),mixedOptions);
+const names={single:'单边蛇形',double:'双边蛇形',large:'大折返'},colors={single:'#60ddbe',double:'#89b5ff',large:'#ffcb71'};
+const x=v=>32+v*2,y=v=>130-v*2;
+const copper=(l,color)=>`<line x1="${x(l.start.x)}" y1="${y(l.start.y)}" x2="${x(l.end.x)}" y2="${y(l.end.y)}" stroke="${color}" stroke-width="${l.width*2}" stroke-linecap="round"/>`;
+const svg=mixedLines.slice(1).map(l=>copper(l,'#4b5e75')).join('')+p.groups[0].map(l=>{const s=p.sections.find(s=>(l.start.x+l.end.x)/2>=s.start.x-1e-6&&(l.start.x+l.end.x)/2<=s.end.x+1e-6);return copper(l,colors[s?.pattern]||'#9aa6b8');}).join('');
+const labels=p.sections.map(s=>`<g fill="${colors[s.pattern]}"><text x="${x((s.start.x+s.end.x)/2)}" y="28" text-anchor="middle">${names[s.pattern]}</text><text x="${x((s.start.x+s.end.x)/2)}" y="53" text-anchor="middle" font-size="12">+${s.added.toFixed(3)}mil</text></g>`).join('');
+const html=`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>混合模式真实几何</title><style>*{box-sizing:border-box}body{margin:0;padding:28px;background:#111c2a;color:#e4edf7;font-family:'Microsoft YaHei',sans-serif}h1{font-size:23px;margin:0 0 12px}p{font-size:13px;color:#a6b8cf;margin:0 0 17px}svg{width:784px;height:275px;display:block;background:#1a293b;border-radius:9px}svg text{font-family:'Microsoft YaHei',sans-serif;font-size:16px}footer{margin-top:17px;font-size:13px;color:#a6b8cf}</style><h1>混合模式：同一条线段组合三种等长形式</h1><p>原长360mil → 目标555mil · 间距W=20mil · 最小振幅H=14mil · 最大振幅20mil</p><svg viewBox="0 0 784 275"><line x1="32" x2="752" y1="130" y2="130" stroke="#7790af" stroke-dasharray="3 5"/>${svg}${labels}</svg><footer>按实际生成几何绘制；灰色为固定走线。三处增量合计${p.rows[0].added.toFixed(3)}mil，长度${p.rows[0].after.toFixed(3)}mil。</footer></html>`;
+await fs.mkdir('validation',{recursive:true});await fs.writeFile('validation/mixed-preview.html',html);await fs.writeFile('validation/mixed-preview.json',JSON.stringify(p,null,2));
+const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+try{const page=await browser.newPage({viewport:{width:840,height:425},deviceScaleFactor:2});await page.goto(pathToFileURL(`${process.cwd()}/validation/mixed-preview.html`).href);await page.screenshot({path:'validation/mixed-preview.png',fullPage:true});}finally{await browser.close();}
+console.info('Actual mixed geometry: validation/mixed-preview.png');

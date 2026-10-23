@@ -1,0 +1,1 @@
+import fs from'node:fs';const p=JSON.parse(fs.readFileSync('validation/speed-baseline.cpuprofile','utf8')),counts=new Map();for(let i=0;i<p.samples.length;i++)counts.set(p.samples[i],(counts.get(p.samples[i])||0)+(p.timeDeltas?.[i]||1000));console.log(p.nodes.map(n=>({name:n.callFrame.functionName,ms:(counts.get(n.id)||0)/1000})).sort((a,b)=>b.ms-a.ms).slice(0,18));
